@@ -7,7 +7,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class ReqResendEmailDTO {
+public class ReqForgotPasswordDTO {
     @NotBlank(message = "Email cannot blank")
     @ValidEmail
     private String email;

@@ -16,6 +16,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -178,5 +179,99 @@ public class UserService {
         }
 
         redisTemplate.opsForValue().set(key, code, 5, TimeUnit.MINUTES);
+    }
+
+    // LOGIN
+    public void updateUserToken(String token, String email) {
+        User currentUSer = this.handleGetUserByEmail(email);
+        if (currentUSer != null) {
+            currentUSer.setRefreshToken(token);
+            this.userRepository.save(currentUSer);
+        }
+    }
+
+    public User getUserByRefreshTokenAndEmail(String token, String email) {
+        return this.userRepository.findByRefreshTokenAndEmail(token, email);
+    }
+
+    // FORGOT PASSWORD
+    public void verifyEmailChangePassword(User user) throws MessagingException {
+        String toAddress = user.getEmail();
+        String subject = "CVNest Password Reset Verification";
+        String content = "<html>"
+                + "<body style='font-family: Arial, sans-serif; background-color: #f1eae0b9; padding: 20px;'>"
+                + "<div style='max-width: 600px; margin: auto; background-color: #fff; padding: 20px; border-radius: 10px;'>"
+                + "<h1 style='text-align: center; color: #AD7D59;'>CVNest Password Reset Request</h1>"
+                + "<p>Hi [[name]],</p>"
+                + "<p>We received a request to reset your password for your CVNest account. If this was you, please use the code below to verify your request and proceed with resetting your password:</p>"
+                + "<div style='text-align: center; margin: 20px 0;'>"
+                + "<p style='font-weight: bold; font-size: 20px;'>[[code]]</p>"
+                + "</div>"
+                + "<p>This code will expire in 5 minutes for security reasons.</p>"
+                + "<p>If you did not request a password reset, please ignore this email. Your account remains secure.</p>"
+                + "<p>Thank you,<br>The CVNest Team</p>"
+                + "<div style='text-align: right;'>"
+                + "<img src='cid:image_logo' alt='CVNest Logo' style='width: 100px; height: auto;'>"
+                + "</div>"
+                + "</div>"
+                + "</body>"
+                + "</html>";
+
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, true);
+
+        helper.setFrom(fromAddress);
+        helper.setTo(toAddress);
+        helper.setSubject(subject);
+
+        // Customize the content with the user's display name and verification URL
+        content = content.replace("[[name]]", user.getFullName());
+        String code = VerificationCodeGenerator.generateVerificationCode();
+        content = content.replace("[[code]]", code);
+
+        helper.setText(content, true);
+
+        try {
+            Resource res = new FileSystemResource(new File("E:\\image\\CVNest_logo.jpg"));
+            helper.addInline("image_logo", res);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        mailSender.send(message);
+
+        String key = "verify:email:changePass:" + user.getEmail();
+        redisTemplate.opsForValue().set(key, code, 5, TimeUnit.MINUTES);
+    }
+
+    public boolean verifyChangePassword(String code, String email) {
+        String redisKey = "verify:email:changePass:" + email;
+        String storedCode = redisTemplate.opsForValue().get(redisKey);
+
+        if (storedCode != null && storedCode.equals(code)) {
+            redisTemplate.delete(redisKey);
+            return true;
+        }
+        return false;
+    }
+
+    public void resetPassword(User user, String newPassword) {
+        String newHashPassword = this.passwordEncoder.encode(newPassword);
+        user.setPassword(newHashPassword);
+        this.userRepository.save(user);
+    }
+
+    // USER
+    public void handleUpdateUser(User reqUser) {
+        Optional<User> currentUser = this.userRepository.findById(reqUser.getId());
+        if (currentUser.isPresent()) {
+            currentUser.get().setFullName(reqUser.getFullName());
+            currentUser.get().setAge(reqUser.getAge());
+            currentUser.get().setAddress(reqUser.getAddress());
+            currentUser.get().setGender(reqUser.getGender());
+            currentUser.get().setRefreshToken(reqUser.getRefreshToken());
+
+            this.userRepository.save(currentUser.get());
+        }
     }
 }

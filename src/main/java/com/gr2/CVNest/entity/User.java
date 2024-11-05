@@ -23,11 +23,27 @@ public class User {
     private String password;
     private String fullName;
     private int age;
+
+    @Enumerated(EnumType.STRING)
     private GenderEnum gender;
+
     private String phone;
     private String address;
+
+    @Column(columnDefinition = "MEDIUMTEXT")
     private String refreshToken;
+
     private boolean isActivated;
     private Instant createdAt;
     private Instant updatedAt;
+
+    @PrePersist
+    public void handleBeforeCreate() {
+        this.createdAt = Instant.now();
+    }
+
+    @PreUpdate
+    public void handleBeforeUpdate() {
+        this.updatedAt = Instant.now();
+    }
 }
