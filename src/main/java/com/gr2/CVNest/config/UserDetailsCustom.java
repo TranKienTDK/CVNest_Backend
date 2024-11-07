@@ -27,9 +27,11 @@ public class UserDetailsCustom implements UserDetailsService {
             throw new UsernameNotFoundException("Username/password khong hop le");
         }
 
+        SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + user.getRole().getRoleName());
+
         return new User(
                 user.getEmail(),
                 user.getPassword(),
-                Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
+                Collections.singletonList(authority));
     }
 }

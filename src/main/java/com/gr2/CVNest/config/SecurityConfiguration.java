@@ -44,10 +44,7 @@ public class SecurityConfiguration {
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(
                         authz -> authz
-                                .requestMatchers("/", "/api/v1/auth/login", "/api/v1/auth/refresh",
-                                                    "/api/v1/auth/register", "/api/v1/auth/verify",
-                                                        "/api/v1/auth/resend-verification", "/api/v1/auth/forgot-password",
-                                                            "/api/v1/auth/verify-code-password", "/api/v1/auth/reset-password").permitAll()
+                                .requestMatchers("/api/v1/auth/**").permitAll()
                                 .anyRequest().authenticated())
                 .oauth2ResourceServer((oauth2) -> oauth2.jwt(Customizer.withDefaults())
                         .authenticationEntryPoint(customAuthenticationEntryPoint))

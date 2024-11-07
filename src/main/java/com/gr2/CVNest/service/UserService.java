@@ -2,7 +2,9 @@ package com.gr2.CVNest.service;
 
 import com.gr2.CVNest.dto.request.ReqRegisterDTO;
 import com.gr2.CVNest.entity.User;
+import com.gr2.CVNest.repository.RoleRepository;
 import com.gr2.CVNest.repository.UserRepository;
+import com.gr2.CVNest.util.constraint.Constraints;
 import com.gr2.CVNest.util.helper.VerificationCodeGenerator;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -25,16 +27,18 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final JavaMailSender mailSender;
     private final RedisTemplate<String, String> redisTemplate;
+    private final RoleRepository roleRepository;
 
     @Value("${spring.mail.username}")
     private String fromAddress;
 
     public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder,
-                       JavaMailSender mailSender, RedisTemplate<String, String> redisTemplate) {
+                       JavaMailSender mailSender, RedisTemplate<String, String> redisTemplate, RoleRepository roleRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.mailSender = mailSender;
         this.redisTemplate = redisTemplate;
+        this.roleRepository = roleRepository;
     }
 
     public User handleGetUserByEmail(String email) {
@@ -52,6 +56,7 @@ public class UserService {
         String hashPassword = this.passwordEncoder.encode(newUser.getPassword());
         user.setPassword(hashPassword);
         user.setFullName(newUser.getFullName());
+        user.setRole(roleRepository.getReferenceById(Constraints.ROLE_USER_ID));
         user.setActivated(false);
 
         this.userRepository.save(user);
