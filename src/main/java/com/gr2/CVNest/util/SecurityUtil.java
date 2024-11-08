@@ -1,6 +1,9 @@
 package com.gr2.CVNest.util;
 
 import com.gr2.CVNest.dto.response.ResLoginDTO;
+import com.gr2.CVNest.entity.User;
+import com.gr2.CVNest.repository.UserRepository;
+import com.gr2.CVNest.util.constraint.Constraints;
 import com.nimbusds.jose.util.Base64;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
@@ -22,9 +25,11 @@ import java.util.Optional;
 @Service
 public class SecurityUtil {
     private final JwtEncoder jwtEncoder;
+    private final UserRepository userRepository;
 
-    public SecurityUtil(JwtEncoder jwtEncoder) {
+    public SecurityUtil(JwtEncoder jwtEncoder, UserRepository userRepository) {
         this.jwtEncoder = jwtEncoder;
+        this.userRepository = userRepository;
     }
 
     public static final MacAlgorithm JWT_ALGORITHM = MacAlgorithm.HS512;
@@ -42,11 +47,15 @@ public class SecurityUtil {
         Instant now = Instant.now();
         Instant validity = now.plus(this.accessTokenExpiration, ChronoUnit.SECONDS);
 
-        // hard code for testing
-        List<String> listAuthority = new ArrayList<>();
+        User user = this.userRepository.findByEmail(dto.getEmail());
+        String role = user.getRole().getRoleName();
+        String roleUser = switch (role) {
+            case Constraints.ROLE_USER -> Constraints.ROLE_USER;
+            case Constraints.ROLE_ADMIN -> Constraints.ROLE_ADMIN;
+            case Constraints.ROLE_HR -> Constraints.ROLE_HR;
+            default -> throw new IllegalArgumentException("Role not recognized: " + role);
+        };
 
-        listAuthority.add("ROLE_USER_CREATE");
-        listAuthority.add("ROLE_USER_UPDATE");
 
         // @formatter:off
         JwtClaimsSet claims = JwtClaimsSet.builder()
@@ -54,7 +63,7 @@ public class SecurityUtil {
                 .expiresAt(validity)
                 .subject(email)
                 .claim("user", dto)
-                .claim("permission", listAuthority)
+                .claim("permission", "ROLE_" + roleUser)
                 .build();
 
         JwsHeader jwsHeader = JwsHeader.with(JWT_ALGORITHM).build();

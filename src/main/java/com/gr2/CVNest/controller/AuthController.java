@@ -12,7 +12,6 @@ import com.gr2.CVNest.util.error.UserNotFoundException;
 import com.gr2.CVNest.util.error.VerifyCodeInvalidException;
 import jakarta.mail.MessagingException;
 import jakarta.validation.Valid;
-import org.apache.coyote.Response;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;

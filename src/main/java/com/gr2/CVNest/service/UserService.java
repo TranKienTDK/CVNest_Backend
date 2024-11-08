@@ -1,6 +1,8 @@
 package com.gr2.CVNest.service;
 
 import com.gr2.CVNest.dto.request.ReqRegisterDTO;
+import com.gr2.CVNest.dto.request.ReqUpdateUserDTO;
+import com.gr2.CVNest.dto.response.ResUpdateUserDTO;
 import com.gr2.CVNest.entity.User;
 import com.gr2.CVNest.repository.RoleRepository;
 import com.gr2.CVNest.repository.UserRepository;
@@ -44,6 +46,12 @@ public class UserService {
     public User handleGetUserByEmail(String email) {
         return this.userRepository.findByEmail(email);
     }
+
+    public User handleGetUserById(long id) {
+        Optional<User> userOptional = this.userRepository.findById(id);
+        return userOptional.orElse(null);
+    }
+
 
     public boolean checkEmailExists(String email) {
         return this.userRepository.existsByEmail(email);
@@ -279,4 +287,31 @@ public class UserService {
             this.userRepository.save(currentUser.get());
         }
     }
+
+    public User updateUser(ReqUpdateUserDTO req) {
+        User user = this.handleGetUserById(req.getId());
+        if (user != null) {
+            user.setFullName(req.getFullName());
+            user.setAge(req.getAge());
+            user.setGender(req.getGender());
+            user.setPhone(req.getPhone());
+            user.setAddress(req.getAddress());
+            this.userRepository.save(user);
+        }
+        return user;
+    }
+
+    // CONVERT DTO
+    public ResUpdateUserDTO convertEntityToUpdateUserDTO(User user) {
+        ResUpdateUserDTO res = new ResUpdateUserDTO();
+        res.setId(user.getId());
+        res.setEmail(user.getEmail());
+        res.setFullName(user.getFullName());
+        res.setAge(user.getAge());
+        res.setPhone(user.getPhone());
+        res.setAddress(user.getAddress());
+        res.setUpdatedAt(user.getUpdatedAt());
+        return res;
+    }
+
 }

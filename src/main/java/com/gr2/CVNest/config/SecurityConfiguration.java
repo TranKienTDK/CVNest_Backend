@@ -1,6 +1,7 @@
 package com.gr2.CVNest.config;
 
 import com.gr2.CVNest.util.SecurityUtil;
+import com.gr2.CVNest.util.constraint.Constraints;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import com.nimbusds.jose.util.Base64;
 import org.springframework.beans.factory.annotation.Value;
@@ -45,6 +46,7 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(
                         authz -> authz
                                 .requestMatchers("/api/v1/auth/**").permitAll()
+                                .requestMatchers("/api/v1/users/**").hasRole(Constraints.ROLE_USER)
                                 .anyRequest().authenticated())
                 .oauth2ResourceServer((oauth2) -> oauth2.jwt(Customizer.withDefaults())
                         .authenticationEntryPoint(customAuthenticationEntryPoint))
