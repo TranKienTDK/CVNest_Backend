@@ -45,8 +45,10 @@ public class SecurityConfiguration {
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(
                         authz -> authz
+                                .requestMatchers("/api/v1/auth/logout").hasAnyRole(Constraints.ROLE_USER, Constraints.ROLE_ADMIN, Constraints.ROLE_HR)
                                 .requestMatchers("/api/v1/auth/**").permitAll()
                                 .requestMatchers("/api/v1/users/**").hasRole(Constraints.ROLE_USER)
+                                .requestMatchers("/api/v1/companies/**").hasRole(Constraints.ROLE_ADMIN)
                                 .anyRequest().authenticated())
                 .oauth2ResourceServer((oauth2) -> oauth2.jwt(Customizer.withDefaults())
                         .authenticationEntryPoint(customAuthenticationEntryPoint))

@@ -23,7 +23,8 @@ public class GlobalException {
             EmailAlreadyExistException.class,
             VerifyCodeInvalidException.class,
             EmailNotFoundException.class,
-            UserNotFoundException.class
+            UserNotFoundException.class,
+            CompanyNotFoundException.class
     })
     public ResponseEntity<RestResponse<Object>> handleIdException(Exception idException) {
         RestResponse<Object> res = new RestResponse<Object>();

@@ -82,7 +82,12 @@ public class AuthController {
     public ResponseEntity<ResLoginDTO> login(@Valid @RequestBody ReqLoginDTO reqLoginDTO) {
         UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
                 reqLoginDTO.getEmail(), reqLoginDTO.getPassword());
-        Authentication authentication = authenticationManagerBuilder.getObject().authenticate(authenticationToken);
+        Authentication authentication = null;
+        try {
+            authentication = authenticationManagerBuilder.getObject().authenticate(authenticationToken);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
