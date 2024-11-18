@@ -12,42 +12,32 @@ import java.time.Instant;
 import java.util.List;
 
 @Entity
-@Table(name = "companies")
+@Table(name = "skills")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Company {
+public class Skill {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
     @NotBlank(message = "Name cannot blank")
     private String name;
-
-    @Column(columnDefinition = "MEDIUMTEXT")
-    private String description;
-    private String address;
-    private String logo;
     private Instant createdAt;
     private Instant updatedAt;
 
-    @OneToMany(mappedBy = "company", fetch = FetchType.LAZY)
-    @JsonIgnore
-    private List<User> users;
-
-    @OneToMany(mappedBy = "company", fetch = FetchType.LAZY)
+    @ManyToMany(fetch = FetchType.LAZY, mappedBy = "skills")
     @JsonIgnore
     private List<Job> jobs;
 
     @PrePersist
     public void handleBeforeCreate() {
-        createdAt = Instant.now();
+        this.createdAt = Instant.now();
     }
 
     @PreUpdate
     public void handleBeforeUpdate() {
-        updatedAt = Instant.now();
+        this.updatedAt = Instant.now();
     }
-
 }

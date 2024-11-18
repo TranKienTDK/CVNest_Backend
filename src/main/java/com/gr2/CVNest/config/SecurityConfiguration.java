@@ -49,6 +49,8 @@ public class SecurityConfiguration {
                                 .requestMatchers("/api/v1/auth/**").permitAll()
                                 .requestMatchers("/api/v1/users/**").hasRole(Constraints.ROLE_USER)
                                 .requestMatchers("/api/v1/companies/**").hasRole(Constraints.ROLE_ADMIN)
+                                .requestMatchers("/api/v1/skills/**").hasRole(Constraints.ROLE_ADMIN)
+                                .requestMatchers("/api/v1/jobs/**").hasRole(Constraints.ROLE_ADMIN)
                                 .anyRequest().authenticated())
                 .oauth2ResourceServer((oauth2) -> oauth2.jwt(Customizer.withDefaults())
                         .authenticationEntryPoint(customAuthenticationEntryPoint))

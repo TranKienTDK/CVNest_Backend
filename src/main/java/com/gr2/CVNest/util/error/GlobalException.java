@@ -24,7 +24,9 @@ public class GlobalException {
             VerifyCodeInvalidException.class,
             EmailNotFoundException.class,
             UserNotFoundException.class,
-            CompanyNotFoundException.class
+            CompanyNotFoundException.class,
+            NameAlreadyExistException.class,
+            EntityNotFoundException.class,
     })
     public ResponseEntity<RestResponse<Object>> handleIdException(Exception idException) {
         RestResponse<Object> res = new RestResponse<Object>();
