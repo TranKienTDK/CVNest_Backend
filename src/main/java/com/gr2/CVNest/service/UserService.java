@@ -7,6 +7,7 @@ import com.gr2.CVNest.entity.User;
 import com.gr2.CVNest.repository.RoleRepository;
 import com.gr2.CVNest.repository.UserRepository;
 import com.gr2.CVNest.util.constraint.Constraints;
+import com.gr2.CVNest.util.error.UserNotFoundException;
 import com.gr2.CVNest.util.helper.VerificationCodeGenerator;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -18,8 +19,10 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -30,17 +33,19 @@ public class UserService {
     private final JavaMailSender mailSender;
     private final RedisTemplate<String, String> redisTemplate;
     private final RoleRepository roleRepository;
+    private final MinIOService minIOService;
 
     @Value("${spring.mail.username}")
     private String fromAddress;
 
     public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder,
-                       JavaMailSender mailSender, RedisTemplate<String, String> redisTemplate, RoleRepository roleRepository) {
+                       JavaMailSender mailSender, RedisTemplate<String, String> redisTemplate, RoleRepository roleRepository, MinIOService minIOService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.mailSender = mailSender;
         this.redisTemplate = redisTemplate;
         this.roleRepository = roleRepository;
+        this.minIOService = minIOService;
     }
 
     public User handleGetUserByEmail(String email) {
@@ -299,6 +304,19 @@ public class UserService {
             this.userRepository.save(user);
         }
         return user;
+    }
+
+    // UPLOAD AVATAR
+    public String uploadAvatar(MultipartFile file, Long userId) throws IOException {
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("File is empty!");
+        }
+        String fileUrl = minIOService.uploadFile(file);
+
+        User user = userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException("User not found!"));
+        user.setAvatar(fileUrl);
+        userRepository.save(user);
+        return fileUrl;
     }
 
     // CONVERT DTO

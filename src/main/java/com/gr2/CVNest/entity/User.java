@@ -30,6 +30,7 @@ public class User {
 
     private String phone;
     private String address;
+    private String avatar;
 
     @Column(columnDefinition = "MEDIUMTEXT")
     private String refreshToken;
