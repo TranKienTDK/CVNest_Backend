@@ -3,7 +3,6 @@ package com.gr2.CVNest.util;
 import com.gr2.CVNest.dto.response.ResLoginDTO;
 import com.gr2.CVNest.entity.User;
 import com.gr2.CVNest.repository.UserRepository;
-import com.gr2.CVNest.util.constraint.Constraints;
 import com.nimbusds.jose.util.Base64;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
@@ -43,47 +42,53 @@ public class SecurityUtil {
     @Value("${cvnest.jwt.refresh-token-validity-in-seconds}")
     private long refreshTokenExpiration;
 
-    public String createAccessToken(String email, ResLoginDTO.UserLogin dto) {
+    public String createAccessToken(String email, ResLoginDTO dto) {
+        ResLoginDTO.UserInsideToken userToken = new ResLoginDTO.UserInsideToken();
+        userToken.setId(dto.getUser().getId());
+        userToken.setEmail(dto.getUser().getEmail());
+        userToken.setName(dto.getUser().getName());
+
         Instant now = Instant.now();
         Instant validity = now.plus(this.accessTokenExpiration, ChronoUnit.SECONDS);
 
-        User user = this.userRepository.findByEmail(dto.getEmail());
-        String role = user.getRole().getRoleName();
-        String roleUser = switch (role) {
-            case Constraints.ROLE_USER -> Constraints.ROLE_USER;
-            case Constraints.ROLE_ADMIN -> Constraints.ROLE_ADMIN;
-            case Constraints.ROLE_HR -> Constraints.ROLE_HR;
-            default -> throw new IllegalArgumentException("Role not recognized: " + role);
-        };
+        // hardcode permission (for testing)
+        List<String> listAuthority = new ArrayList<String>();
 
+        listAuthority.add("ROLE_USER_CREATE");
+        listAuthority.add("ROLE_USER_UPDATE");
 
         // @formatter:off
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuedAt(now)
                 .expiresAt(validity)
                 .subject(email)
-                .claim("user", dto)
-                .claim("permission", "ROLE_" + roleUser)
+                .claim("user", userToken)
+                .claim("permission", listAuthority)
                 .build();
 
         JwsHeader jwsHeader = JwsHeader.with(JWT_ALGORITHM).build();
-        return this.jwtEncoder.encode(JwtEncoderParameters.from(jwsHeader,claims)).getTokenValue();
+        return this.jwtEncoder.encode(JwtEncoderParameters.from(jwsHeader, claims)).getTokenValue();
     }
 
     public String createRefreshToken(String email, ResLoginDTO dto) {
         Instant now = Instant.now();
         Instant validity = now.plus(this.refreshTokenExpiration, ChronoUnit.SECONDS);
 
+        ResLoginDTO.UserInsideToken userToken = new ResLoginDTO.UserInsideToken();
+        userToken.setId(dto.getUser().getId());
+        userToken.setEmail(dto.getUser().getEmail());
+        userToken.setName(dto.getUser().getName());
+
         // @formatter:off
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuedAt(now)
                 .expiresAt(validity)
                 .subject(email)
-                .claim("user", dto.getUser())
+                .claim("user", userToken)
                 .build();
 
         JwsHeader jwsHeader = JwsHeader.with(JWT_ALGORITHM).build();
-        return this.jwtEncoder.encode(JwtEncoderParameters.from(jwsHeader,claims)).getTokenValue();
+        return this.jwtEncoder.encode(JwtEncoderParameters.from(jwsHeader, claims)).getTokenValue();
     }
 
     /**

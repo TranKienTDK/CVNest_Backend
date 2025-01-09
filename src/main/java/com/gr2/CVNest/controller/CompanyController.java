@@ -8,6 +8,7 @@ import com.gr2.CVNest.util.annotation.ApiMessage;
 import com.gr2.CVNest.util.error.CompanyNotFoundException;
 import com.turkraft.springfilter.boot.Filter;
 import jakarta.validation.Valid;
+import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
@@ -16,12 +17,9 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1")
+@AllArgsConstructor
 public class CompanyController {
     private final CompanyService companyService;
-
-    public CompanyController(CompanyService companyService) {
-        this.companyService = companyService;
-    }
 
     // CREATE COMPANY
     @PostMapping("/companies")

@@ -1,15 +1,16 @@
 package com.gr2.CVNest.config;
 
 import com.gr2.CVNest.util.SecurityUtil;
-import com.gr2.CVNest.util.constraint.Constraints;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import com.nimbusds.jose.util.Base64;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -40,17 +41,25 @@ public class SecurityConfiguration {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http,
                                            CustomAuthenticationEntryPoint customAuthenticationEntryPoint) throws Exception {
+        String[] whiteList = {
+                "/",
+                "/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/register",
+                "/storage/**",
+                "/api/v1/email/**",
+                "/v3/api-docs/**",
+                "/swagger-ui/**",
+                "/swagger-ui.html"
+        };
+
         http
-                .csrf(c -> c.disable())
+                .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(
                         authz -> authz
-                                .requestMatchers("/api/v1/auth/logout").hasAnyRole(Constraints.ROLE_USER, Constraints.ROLE_ADMIN, Constraints.ROLE_HR)
-                                .requestMatchers("/api/v1/auth/**").permitAll()
-                                .requestMatchers("/api/v1/users/**").hasRole(Constraints.ROLE_USER)
-                                .requestMatchers("/api/v1/companies/**").hasRole(Constraints.ROLE_ADMIN)
-                                .requestMatchers("/api/v1/skills/**").hasRole(Constraints.ROLE_ADMIN)
-                                .requestMatchers("/api/v1/jobs/**").hasRole(Constraints.ROLE_ADMIN)
+                                .requestMatchers(whiteList).permitAll()
+                                .requestMatchers(HttpMethod.GET, "/api/v1/companies/**").permitAll()
+                                .requestMatchers(HttpMethod.GET, "/api/v1/jobs/**").permitAll()
+                                .requestMatchers(HttpMethod.GET, "/api/v1/skills/**").permitAll()
                                 .anyRequest().authenticated())
                 .oauth2ResourceServer((oauth2) -> oauth2.jwt(Customizer.withDefaults())
                         .authenticationEntryPoint(customAuthenticationEntryPoint))
@@ -59,7 +68,7 @@ public class SecurityConfiguration {
                         exceptions -> exceptions
                                 .authenticationEntryPoint(new BearerTokenAuthenticationEntryPoint()) // 401
                                 .accessDeniedHandler(new BearerTokenAccessDeniedHandler())) // 403
-                .formLogin(f -> f.disable())
+                .formLogin(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         return http.build();

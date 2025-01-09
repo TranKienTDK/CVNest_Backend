@@ -53,10 +53,15 @@ public class SkillService {
     }
 
     public void handleDeleteSkill(long id) {
+        // delete job (inside job_skill table)
         Optional<Skill> skillOptional = this.skillRepository.findById(id);
-        Skill curSkill = skillOptional.get();
-        curSkill.getJobs().forEach(job -> job.getSkills().remove(curSkill));
+        Skill currentSkill = skillOptional.get();
+        currentSkill.getJobs().forEach(job -> job.getSkills().remove(currentSkill));
 
-        this.skillRepository.delete(curSkill);
+        // delete subscriber (inside subscriber_skill table)
+        currentSkill.getSubscribers().forEach(subs -> subs.getSkills().remove(currentSkill));
+
+        // delete skill
+        this.skillRepository.delete(currentSkill);
     }
 }

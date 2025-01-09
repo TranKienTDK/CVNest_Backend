@@ -20,18 +20,16 @@ public class UserDetailsCustom implements UserDetailsService {
     }
 
     @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        com.gr2.CVNest.entity.User user = this.userService.handleGetUserByEmail(email);
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        com.gr2.CVNest.entity.User user = this.userService.handleGetUserByEmail(username);
 
         if (user == null) {
             throw new UsernameNotFoundException("Username/password khong hop le");
         }
 
-        SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + user.getRole().getRoleName());
-
         return new User(
                 user.getEmail(),
                 user.getPassword(),
-                Collections.singletonList(authority));
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
     }
 }

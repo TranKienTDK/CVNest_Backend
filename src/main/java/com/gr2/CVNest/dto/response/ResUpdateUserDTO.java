@@ -10,15 +10,21 @@ import java.time.Instant;
 
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
 public class ResUpdateUserDTO {
     private long id;
-    private String email;
-    private String fullName;
+    private String name;
     private GenderEnum gender;
-    private int age;
-    private String phone;
     private String address;
+    private int age;
     private Instant updatedAt;
+
+    private CompanyUser company;
+
+    @Getter
+    @Setter
+    public static class CompanyUser {
+        private long id;
+        private String name;
+    }
 }
+

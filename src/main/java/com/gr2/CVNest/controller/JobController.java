@@ -10,6 +10,7 @@ import com.gr2.CVNest.util.annotation.ApiMessage;
 import com.gr2.CVNest.util.error.EntityNotFoundException;
 import com.turkraft.springfilter.boot.Filter;
 import jakarta.validation.Valid;
+import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
@@ -18,12 +19,9 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1")
+@AllArgsConstructor
 public class JobController {
     private final JobService jobService;
-
-    public JobController(JobService jobService) {
-        this.jobService = jobService;
-    }
 
     // CREATE JOB
     @PostMapping("/jobs")
@@ -40,7 +38,7 @@ public class JobController {
         if (curJob == null) {
             throw new EntityNotFoundException("Job not found");
         }
-        return ResponseEntity.ok().body(this.jobService.handleUpdateJob(reqJob));
+        return ResponseEntity.ok().body(this.jobService.handleUpdateJob(reqJob, curJob));
     }
 
     // GET ALL JOBS

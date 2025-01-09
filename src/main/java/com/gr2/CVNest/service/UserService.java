@@ -1,12 +1,13 @@
 package com.gr2.CVNest.service;
 
-import com.gr2.CVNest.dto.request.ReqRegisterDTO;
-import com.gr2.CVNest.dto.request.ReqUpdateUserDTO;
+import com.gr2.CVNest.dto.response.ResCreateUserDTO;
 import com.gr2.CVNest.dto.response.ResUpdateUserDTO;
+import com.gr2.CVNest.dto.response.ResUserDTO;
+import com.gr2.CVNest.dto.response.ResultPaginationDTO;
+import com.gr2.CVNest.entity.Company;
+import com.gr2.CVNest.entity.Role;
 import com.gr2.CVNest.entity.User;
-import com.gr2.CVNest.repository.RoleRepository;
 import com.gr2.CVNest.repository.UserRepository;
-import com.gr2.CVNest.util.constraint.Constraints;
 import com.gr2.CVNest.util.error.UserNotFoundException;
 import com.gr2.CVNest.util.helper.VerificationCodeGenerator;
 import jakarta.mail.MessagingException;
@@ -14,6 +15,9 @@ import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -23,8 +27,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Service
 public class UserService {
@@ -32,49 +38,26 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final JavaMailSender mailSender;
     private final RedisTemplate<String, String> redisTemplate;
-    private final RoleRepository roleRepository;
     private final MinIOService minIOService;
+    private final CompanyService companyService;
+    private final RoleService roleService;
 
     @Value("${spring.mail.username}")
     private String fromAddress;
 
     public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder,
-                       JavaMailSender mailSender, RedisTemplate<String, String> redisTemplate, RoleRepository roleRepository, MinIOService minIOService) {
+                       JavaMailSender mailSender, RedisTemplate<String, String> redisTemplate, MinIOService minIOService, CompanyService companyService, RoleService roleService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.mailSender = mailSender;
         this.redisTemplate = redisTemplate;
-        this.roleRepository = roleRepository;
         this.minIOService = minIOService;
+        this.companyService = companyService;
+        this.roleService = roleService;
     }
 
     public User handleGetUserByEmail(String email) {
         return this.userRepository.findByEmail(email);
-    }
-
-    public User handleGetUserById(long id) {
-        Optional<User> userOptional = this.userRepository.findById(id);
-        return userOptional.orElse(null);
-    }
-
-
-    public boolean checkEmailExists(String email) {
-        return this.userRepository.existsByEmail(email);
-    }
-
-    // SIGN UP
-    public void register(ReqRegisterDTO newUser) throws MessagingException {
-        User user = new User();
-        user.setEmail(newUser.getEmail());
-        String hashPassword = this.passwordEncoder.encode(newUser.getPassword());
-        user.setPassword(hashPassword);
-        user.setFullName(newUser.getFullName());
-        user.setRole(roleRepository.getReferenceById(Constraints.ROLE_USER_ID));
-        user.setActivated(false);
-
-        this.userRepository.save(user);
-        sendEmailVerification(user);
-
     }
 
     public void sendEmailVerification(User user) throws MessagingException {
@@ -108,7 +91,7 @@ public class UserService {
         helper.setSubject(subject);
 
         // Customize the content with the user's display name and verification URL
-        content = content.replace("[[name]]", user.getFullName());
+        content = content.replace("[[name]]", user.getName());
         String code = VerificationCodeGenerator.generateVerificationCode();
         content = content.replace("[[code]]", code);
 
@@ -136,7 +119,7 @@ public class UserService {
             redisTemplate.delete(redisKey);
             User user = this.userRepository.findByEmail(email);
             if (user != null) {
-                user.setActivated(true);
+//                user.setActivated(true);
                 this.userRepository.save(user);
             }
             return true;
@@ -175,7 +158,7 @@ public class UserService {
         helper.setSubject(subject);
 
         // Customize the content with the user's display name and verification URL
-        content = content.replace("[[name]]", user.getFullName());
+        content = content.replace("[[name]]", user.getName());
         String code = VerificationCodeGenerator.generateVerificationCode();
         content = content.replace("[[code]]", code);
 
@@ -243,7 +226,7 @@ public class UserService {
         helper.setSubject(subject);
 
         // Customize the content with the user's display name and verification URL
-        content = content.replace("[[name]]", user.getFullName());
+        content = content.replace("[[name]]", user.getName());
         String code = VerificationCodeGenerator.generateVerificationCode();
         content = content.replace("[[code]]", code);
 
@@ -279,57 +262,147 @@ public class UserService {
         this.userRepository.save(user);
     }
 
-    // USER
-    public void handleUpdateUser(User reqUser) {
-        Optional<User> currentUser = this.userRepository.findById(reqUser.getId());
-        if (currentUser.isPresent()) {
-            currentUser.get().setFullName(reqUser.getFullName());
-            currentUser.get().setAge(reqUser.getAge());
-            currentUser.get().setAddress(reqUser.getAddress());
-            currentUser.get().setGender(reqUser.getGender());
-            currentUser.get().setRefreshToken(reqUser.getRefreshToken());
-
-            this.userRepository.save(currentUser.get());
+    public User handleCreateUser(User user) {
+        // check company
+        if (user.getCompany() != null) {
+            Optional<Company> companyOptional = Optional.ofNullable(this.companyService.handleFindById(user.getCompany().getId()));
+            user.setCompany(companyOptional.orElse(null));
         }
+
+        // check role
+        if (user.getRole() != null) {
+            Role r = this.roleService.fetchById(user.getRole().getId());
+            user.setRole(r);
+        }
+
+        return this.userRepository.save(user);
     }
 
-    public User updateUser(ReqUpdateUserDTO req) {
-        User user = this.handleGetUserById(req.getId());
-        if (user != null) {
-            user.setFullName(req.getFullName());
-            user.setAge(req.getAge());
-            user.setGender(req.getGender());
-            user.setPhone(req.getPhone());
-            user.setAddress(req.getAddress());
-            this.userRepository.save(user);
-        }
-        return user;
+    public void handleDeleteUser(long id) {
+        this.userRepository.deleteById(id);
     }
 
-    // UPLOAD AVATAR
-    public String uploadAvatar(MultipartFile file, Long userId) throws IOException {
-        if (file.isEmpty()) {
-            throw new IllegalArgumentException("File is empty!");
-        }
-        String fileUrl = minIOService.uploadFile(file);
-
-        User user = userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException("User not found!"));
-        user.setAvatar(fileUrl);
-        userRepository.save(user);
-        return fileUrl;
+    public User fetchUserById(long id) {
+        Optional<User> userOptional = this.userRepository.findById(id);
+        return userOptional.orElse(null);
     }
 
-    // CONVERT DTO
-    public ResUpdateUserDTO convertEntityToUpdateUserDTO(User user) {
-        ResUpdateUserDTO res = new ResUpdateUserDTO();
+    public ResultPaginationDTO fetchAllUser(Specification<User> spec, Pageable pageable) {
+        Page<User> pageUser = this.userRepository.findAll(spec, pageable);
+        ResultPaginationDTO rs = new ResultPaginationDTO();
+        ResultPaginationDTO.Meta mt = new ResultPaginationDTO.Meta();
+
+        mt.setPage(pageable.getPageNumber() + 1);
+        mt.setPageSize(pageable.getPageSize());
+
+        mt.setPages(pageUser.getTotalPages());
+        mt.setTotal(pageUser.getTotalElements());
+
+        rs.setMeta(mt);
+
+        // remove sensitive data
+        List<ResUserDTO> listUser = pageUser.getContent()
+                .stream().map(this::convertToResUserDTO)
+                .collect(Collectors.toList());
+
+        rs.setResult(listUser);
+
+        return rs;
+    }
+
+    public User handleUpdateUser(User reqUser) {
+        User currentUser = this.fetchUserById(reqUser.getId());
+        if (currentUser != null) {
+            currentUser.setAddress(reqUser.getAddress());
+            currentUser.setGender(reqUser.getGender());
+            currentUser.setAge(reqUser.getAge());
+            currentUser.setName(reqUser.getName());
+
+            // check company
+            if (reqUser.getCompany() != null) {
+                Optional<Company> companyOptional = Optional.ofNullable(this.companyService.handleFindById(reqUser.getCompany().getId()));
+                currentUser.setCompany(companyOptional.orElse(null));
+            }
+
+            // check role
+            if (reqUser.getRole() != null) {
+                Role r = this.roleService.fetchById(reqUser.getRole().getId());
+                currentUser.setRole(r);
+            }
+
+            // update
+            currentUser = this.userRepository.save(currentUser);
+        }
+        return currentUser;
+    }
+
+    public boolean isEmailExist(String email) {
+        return this.userRepository.existsByEmail(email);
+    }
+
+    public ResCreateUserDTO convertToResCreateUserDTO(User user) {
+        ResCreateUserDTO res = new ResCreateUserDTO();
+        ResCreateUserDTO.CompanyUser com = new ResCreateUserDTO.CompanyUser();
+
         res.setId(user.getId());
         res.setEmail(user.getEmail());
-        res.setFullName(user.getFullName());
+        res.setName(user.getName());
         res.setAge(user.getAge());
-        res.setPhone(user.getPhone());
+        res.setCreatedAt(user.getCreatedAt());
+        res.setGender(user.getGender());
         res.setAddress(user.getAddress());
-        res.setUpdatedAt(user.getUpdatedAt());
+
+        if (user.getCompany() != null) {
+            com.setId(user.getCompany().getId());
+            com.setName(user.getCompany().getName());
+            res.setCompany(com);
+        }
         return res;
     }
 
+    public ResUpdateUserDTO convertToResUpdateUserDTO(User user) {
+        ResUpdateUserDTO res = new ResUpdateUserDTO();
+        ResUpdateUserDTO.CompanyUser com = new ResUpdateUserDTO.CompanyUser();
+        if (user.getCompany() != null) {
+            com.setId(user.getCompany().getId());
+            com.setName(user.getCompany().getName());
+            res.setCompany(com);
+        }
+
+        res.setId(user.getId());
+        res.setName(user.getName());
+        res.setAge(user.getAge());
+        res.setUpdatedAt(user.getUpdatedAt());
+        res.setGender(user.getGender());
+        res.setAddress(user.getAddress());
+        return res;
+    }
+
+    public ResUserDTO convertToResUserDTO(User user) {
+        ResUserDTO res = new ResUserDTO();
+        ResUserDTO.CompanyUser com = new ResUserDTO.CompanyUser();
+        ResUserDTO.RoleUser role = new ResUserDTO.RoleUser();
+
+        if (user.getCompany() != null) {
+            com.setId(user.getCompany().getId());
+            com.setName(user.getCompany().getName());
+            res.setCompany(com);
+        }
+
+        if (user.getRole() != null) {
+            role.setId(user.getRole().getId());
+            role.setName(user.getRole().getName());
+            res.setRole(role);
+        }
+
+        res.setId(user.getId());
+        res.setEmail(user.getEmail());
+        res.setName(user.getName());
+        res.setAge(user.getAge());
+        res.setUpdatedAt(user.getUpdatedAt());
+        res.setCreatedAt(user.getCreatedAt());
+        res.setGender(user.getGender());
+        res.setAddress(user.getAddress());
+        return res;
+    }
 }

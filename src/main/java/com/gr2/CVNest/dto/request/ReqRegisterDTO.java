@@ -15,5 +15,5 @@ public class ReqRegisterDTO {
     @NotBlank(message = "Password cannot blank")
     private String password;
 
-    private String fullName;
+    private String name;
 }

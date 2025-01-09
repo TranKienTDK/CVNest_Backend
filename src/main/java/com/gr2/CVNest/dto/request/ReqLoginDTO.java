@@ -8,9 +8,9 @@ import lombok.Setter;
 @Getter
 @Setter
 public class ReqLoginDTO {
-    @NotBlank(message = "Email cannot blank")
+    @NotBlank(message = "Username cannot blank")
     @ValidEmail
-    private String email;
+    private String username;
 
     @NotBlank(message = "Password cannot blank")
     private String password;

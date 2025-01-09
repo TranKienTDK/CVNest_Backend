@@ -19,8 +19,7 @@ public class ResUpdateJobDTO {
     private String location;
     private int quantity;
     private LevelEnum level;
-    private long startSalary;
-    private long endSalary;
+    private double salary;
     private String description;
     private Instant startDate;
     private Instant endDate;

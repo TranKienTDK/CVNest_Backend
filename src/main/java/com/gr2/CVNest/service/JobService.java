@@ -4,8 +4,10 @@ import com.gr2.CVNest.dto.response.ResCreateJobDTO;
 import com.gr2.CVNest.dto.response.ResFetchJobDTO;
 import com.gr2.CVNest.dto.response.ResUpdateJobDTO;
 import com.gr2.CVNest.dto.response.ResultPaginationDTO;
+import com.gr2.CVNest.entity.Company;
 import com.gr2.CVNest.entity.Job;
 import com.gr2.CVNest.entity.Skill;
+import com.gr2.CVNest.repository.CompanyRepository;
 import com.gr2.CVNest.repository.JobRepository;
 import com.gr2.CVNest.repository.SkillRepository;
 import org.springframework.data.domain.Page;
@@ -21,10 +23,12 @@ import java.util.stream.Collectors;
 public class JobService {
     private final JobRepository jobRepository;
     private final SkillRepository skillRepository;
+    private final CompanyRepository companyRepository;
 
-    public JobService(JobRepository jobRepository, SkillRepository skillRepository) {
+    public JobService(JobRepository jobRepository, SkillRepository skillRepository, CompanyRepository companyRepository) {
         this.jobRepository = jobRepository;
         this.skillRepository = skillRepository;
+        this.companyRepository = companyRepository;
     }
 
     public Job handleGetJobById(Long id) {
@@ -41,8 +45,7 @@ public class JobService {
         resFetchJobDTO.setLevel(reqJob.getLevel());
         resFetchJobDTO.setLocation(reqJob.getLocation());
         resFetchJobDTO.setQuantity(reqJob.getQuantity());
-        resFetchJobDTO.setStartSalary(reqJob.getStartSalary());
-        resFetchJobDTO.setEndSalary(reqJob.getEndSalary());
+        resFetchJobDTO.setSalary(reqJob.getSalary());
         resFetchJobDTO.setStartDate(reqJob.getStartDate());
         resFetchJobDTO.setEndDate(reqJob.getEndDate());
         resFetchJobDTO.setActive(reqJob.isActive());
@@ -51,7 +54,7 @@ public class JobService {
 
         if (reqJob.getSkills() != null) {
             List<String> skills = reqJob.getSkills()
-                    .stream().map(item -> item.getName())
+                    .stream().map(Skill::getName)
                     .collect(Collectors.toList());
             resFetchJobDTO.setSkills(skills);
         }
@@ -63,33 +66,38 @@ public class JobService {
     public ResCreateJobDTO handleCreateJob(Job reqJob) {
         if (reqJob.getSkills() != null) {
             List<Long> reqSkills = reqJob.getSkills()
-                    .stream().map(x -> x.getId())
+                    .stream().map(Skill::getId)
                     .toList();
             List<Skill> dbSkills = this.skillRepository.findByIdIn(reqSkills);
             reqJob.setSkills(dbSkills);
         }
 
-            Job curJob = this.jobRepository.save(reqJob);
+        // check company
+        if (reqJob.getCompany() != null) {
+            Optional<Company> cOptional = this.companyRepository.findById(reqJob.getCompany().getId());
+            cOptional.ifPresent(reqJob::setCompany);
+        }
 
-            ResCreateJobDTO resJob = new ResCreateJobDTO();
+        Job curJob = this.jobRepository.save(reqJob);
 
-            resJob.setId(curJob.getId());
-            resJob.setName(curJob.getName());
-            resJob.setLocation(curJob.getLocation());
-            resJob.setDescription(curJob.getDescription());
-            resJob.setQuantity(curJob.getQuantity());
-            resJob.setStartSalary(curJob.getStartSalary());
-            resJob.setEndSalary(curJob.getEndSalary());
-            resJob.setStartDate(curJob.getStartDate());
-            resJob.setEndDate(curJob.getEndDate());
-            resJob.setActive(curJob.isActive());
+        ResCreateJobDTO resJob = new ResCreateJobDTO();
 
-            if (curJob.getSkills() != null) {
-                List<String> skills = curJob.getSkills()
-                        .stream().map(item -> item.getName())
-                        .collect(Collectors.toList());
-                resJob.setSkills(skills);
-            }
+        resJob.setId(curJob.getId());
+        resJob.setName(curJob.getName());
+        resJob.setLocation(curJob.getLocation());
+        resJob.setDescription(curJob.getDescription());
+        resJob.setQuantity(curJob.getQuantity());
+        resJob.setSalary(curJob.getSalary());
+        resJob.setStartDate(curJob.getStartDate());
+        resJob.setEndDate(curJob.getEndDate());
+        resJob.setActive(curJob.isActive());
+
+        if (curJob.getSkills() != null) {
+            List<String> skills = curJob.getSkills()
+                    .stream().map(Skill::getName)
+                    .collect(Collectors.toList());
+            resJob.setSkills(skills);
+        }
         return resJob;
     }
 
@@ -112,14 +120,30 @@ public class JobService {
     }
 
     // UPDATE A JOB
-    public ResUpdateJobDTO handleUpdateJob(Job reqJob) {
+    public ResUpdateJobDTO handleUpdateJob(Job reqJob, Job jobInDB) {
         if (reqJob.getSkills() != null) {
             List<Long> reqSkills = reqJob.getSkills()
-                    .stream().map(x -> x.getId())
+                    .stream().map(Skill::getId)
                     .toList();
             List<Skill> dbSkills = this.skillRepository.findByIdIn(reqSkills);
-            reqJob.setSkills(dbSkills);
+            jobInDB.setSkills(dbSkills);
         }
+
+        // Check company
+        if (reqJob.getCompany() != null) {
+            Optional<Company> companyOptional = this.companyRepository.findById(reqJob.getCompany().getId());
+            companyOptional.ifPresent(jobInDB::setCompany);
+        }
+
+        jobInDB.setName(reqJob.getName());
+        jobInDB.setDescription(reqJob.getDescription());
+        jobInDB.setSalary(reqJob.getSalary());
+        jobInDB.setQuantity(reqJob.getQuantity());
+        jobInDB.setLocation(reqJob.getLocation());
+        jobInDB.setLevel(reqJob.getLevel());
+        jobInDB.setStartDate(reqJob.getStartDate());
+        jobInDB.setEndDate(reqJob.getEndDate());
+        jobInDB.setActive(reqJob.isActive());
 
         Job curJob = this.jobRepository.save(reqJob);
 
@@ -130,15 +154,14 @@ public class JobService {
         resJob.setLocation(curJob.getLocation());
         resJob.setDescription(curJob.getDescription());
         resJob.setQuantity(curJob.getQuantity());
-        resJob.setStartSalary(curJob.getStartSalary());
-        resJob.setEndSalary(curJob.getEndSalary());
+        resJob.setSalary(curJob.getSalary());
         resJob.setStartDate(curJob.getStartDate());
         resJob.setEndDate(curJob.getEndDate());
         resJob.setActive(curJob.isActive());
 
         if (curJob.getSkills() != null) {
             List<String> skills = curJob.getSkills()
-                    .stream().map(item -> item.getName())
+                    .stream().map(Skill::getName)
                     .collect(Collectors.toList());
             resJob.setSkills(skills);
         }

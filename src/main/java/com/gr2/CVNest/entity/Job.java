@@ -1,6 +1,8 @@
 package com.gr2.CVNest.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.gr2.CVNest.util.SecurityUtil;
 import com.gr2.CVNest.util.constant.LevelEnum;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -27,8 +29,7 @@ public class Job {
 
     @Enumerated(EnumType.STRING)
     private LevelEnum level;
-    private long startSalary;
-    private long endSalary;
+    private double salary;
 
     @Column(columnDefinition = "MEDIUMTEXT")
     private String description;
@@ -39,6 +40,9 @@ public class Job {
     private Instant createdAt;
     private Instant updatedAt;
 
+    private String createdBy;
+    private String updatedBy;
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JsonIgnoreProperties(value = { "jobs" })
     @JoinTable(name = "job_skill", joinColumns = @JoinColumn(name = "job_id"), inverseJoinColumns = @JoinColumn(name = "skill_id"))
@@ -48,13 +52,19 @@ public class Job {
     @JoinColumn(name = "company_id")
     private Company company;
 
+    @OneToMany(mappedBy = "job", fetch = FetchType.LAZY)
+    @JsonIgnore
+    List<Resume> resumes;
+
     @PrePersist
     public void handleBeforeCreate() {
+        this.createdBy = SecurityUtil.getCurrentUserLogin().isPresent() ? SecurityUtil.getCurrentUserLogin().get() : "";
         this.createdAt = Instant.now();
     }
 
     @PreUpdate
     public void handleBeforeUpdate() {
+        this.updatedBy = SecurityUtil.getCurrentUserLogin().isPresent() ? SecurityUtil.getCurrentUserLogin().get() : "";
         this.updatedAt = Instant.now();
     }
 
